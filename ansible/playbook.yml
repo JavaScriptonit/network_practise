@@ -2,22 +2,63 @@
 - hosts: all
   become: yes
   tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
     - name: Install necessary packages
       apt:
         name:
-          - net-tools
           - iproute2
           - tcpdump
+          - net-tools
+          - python3
+          - python3-pip
+          - curl
         state: present
 
-    - name: Configure network interfaces
-      template:
-        src: templates/interfaces.j2
-        dest: /etc/network/interfaces
-      notify: Restart networking
+    - name: Add Webmin repository key
+      apt_key:
+        url: https://download.webmin.com/jcameron-key.asc
+        state: present
+
+    - name: Add Webmin repository
+      apt_repository:
+        repo: "deb https://download.webmin.com/download/repository sarge contrib"
+        state: present
+        filename: webmin
+
+    - name: Install Webmin for network management UI
+      apt:
+        name: webmin
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Configure Netplan for network interfaces
+      copy:
+        content: |
+          network:
+            version: 2
+            ethernets:
+              eth0:
+                dhcp4: yes
+              eth1:
+                addresses:
+                  - 192.168.0.{{ 100 + ansible_play_hosts.index(inventory_hostname) }}/24
+                routes:
+                  - to: 192.168.1.0/24
+                    via: 192.168.0.1
+        dest: /etc/netplan/01-netcfg.yaml
+      notify: Apply netplan configuration
+
+    - name: Start HTTP server on server1
+      command: python3 -m http.server 8080
+      when: inventory_hostname == "server1"
+
+    - name: Send HTTP request from server2 to server1
+      command: curl http://192.168.0.101:8080
+      when: inventory_hostname == "server2"
 
   handlers:
-    - name: Restart networking
-      service:
-        name: networking
-        state: restarted
+    - name: Apply netplan configuration
+      command: netplan apply

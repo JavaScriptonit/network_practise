@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install necessary packages
+      apt:
+        name:
+          - iproute2
+          - tcpdump
+          - net-tools
+        state: present
+
+    - name: Configure network interfaces
+      template:
+        src: templates/interfaces.j2
+        dest: /etc/network/interfaces
+      notify: Apply network configuration
+
+  handlers:
+    - name: Apply network configuration
+      command: /sbin/ifdown -a && /sbin/ifup -a
