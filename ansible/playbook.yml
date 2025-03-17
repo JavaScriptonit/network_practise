@@ -1,0 +1,23 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install necessary packages
+      apt:
+        name:
+          - net-tools
+          - iproute2
+          - tcpdump
+        state: present
+
+    - name: Configure network interfaces
+      template:
+        src: templates/interfaces.j2
+        dest: /etc/network/interfaces
+      notify: Restart networking
+
+  handlers:
+    - name: Restart networking
+      service:
+        name: networking
+        state: restarted
