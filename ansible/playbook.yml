@@ -52,12 +52,20 @@
       notify: Apply netplan configuration
 
     - name: Start HTTP server on server1
-      command: python3 -m http.server 8080
+      shell: |
+        if ! pgrep -f "python3 -m http.server 8080"; then
+          nohup python3 -m http.server 8080 > /dev/null 2>&1 &
+        fi
       when: inventory_hostname == "server1"
 
     - name: Send HTTP request from server2 to server1
-      command: curl http://192.168.0.101:8080
+      command: curl http://93.183.74.84:8080
       when: inventory_hostname == "server2"
+      register: curl_log
+
+    - name: Вывод curl from server2 to server1
+      debug:
+        var: curl_log.stdout_lines
 
   handlers:
     - name: Apply netplan configuration
