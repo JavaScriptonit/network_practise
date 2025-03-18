@@ -1,0 +1,47 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install necessary tools
+      apt:
+        name:
+          - tcpdump
+          - iftop
+          - iperf3
+        state: present
+
+    - name: Start iperf3 server on server1
+      command: iperf3 -s
+      when: inventory_hostname == "server1"
+      async: 600
+      poll: 0
+
+    - name: Run iperf3 client on server2
+      command: iperf3 -c 93.183.74.93
+      when: inventory_hostname == "server2"
+
+    - name: Start tcpdump on server1
+      command: tcpdump -i enp0s5 -w /tmp/capture.pcap
+      when: inventory_hostname == "server1"
+      async: 600
+      poll: 0
+
+    - name: Send HTTP request from server2 to server1
+      command: curl http://93.183.74.93:8080
+      when: inventory_hostname == "server2"
+
+    - name: Display iperf3 results
+      debug:
+        var: iperf_result.stdout
+      when: inventory_hostname == "server2"
+
+    - name: Stop tcpdump on server1
+      command: pkill tcpdump
+      when: inventory_hostname == "server1"
+
+    - name: Fetch capture file from server1
+      fetch:
+        src: /tmp/capture.pcap
+        dest: ./capture.pcap
+        flat: yes
+      when: inventory_hostname == "server1"

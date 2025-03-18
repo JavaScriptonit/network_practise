@@ -59,7 +59,7 @@
       when: inventory_hostname == "server1"
 
     - name: Send HTTP request from server2 to server1
-      command: curl http://93.183.74.84:8080
+      command: curl http://93.183.74.93:8080
       when: inventory_hostname == "server2"
       register: curl_log
 
